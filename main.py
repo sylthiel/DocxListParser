@@ -97,7 +97,7 @@ def process_document():
     document = Document(io[0])
     document.save(io[0])
     document_xml = [para._p.xml for para in document.paragraphs]
-    with open(io[2], 'w+')  as dev_output:
+    with open(io[2], 'w+', encoding='utf-8')  as dev_output:
         dev_output.write("\n".join(document_xml))
     all_numbered_lists = {}
     max_nested_level: int = -1
@@ -110,13 +110,30 @@ def process_document():
                 max_nested_level = list_node_ilvl
             list_node_numid = (tree.xpath('//w:numPr/w:numId[@w:val]', namespaces=tree.nsmap))[0].attrib[
                 '{' + tree.nsmap['w'] + '}val']
-            try:
-                #list_node_value = (tree.xpath('//w:r/w:t', namespaces=tree.nsmap))[0].text
-                list_node_value = "".join([value.text for value in tree.xpath('//w:r/w:t', namespaces=tree.nsmap)])
-                #For some reason some styles (like struckthrough) separate the text value into multiple xml entries, so we iterate through all w:t
-            except IndexError:
-                # this most likely means that this list entry is empty
-                list_node_value = ""
+
+            #list_node_value = "".join([value.text for value in tree.xpath('//w:r/w:t', namespaces=tree.nsmap)])
+            list_node_value = ''
+            style_parts = tree.xpath('//w:r', namespaces=tree.nsmap)
+            for part in style_parts:
+                text_part = "".join([val.text for val in part.xpath('.//w:t', namespaces=tree.nsmap)])
+                style_part = part.xpath(".//w:rPr", namespaces=tree.nsmap)
+                bold = style_part[0].xpath(".//w:b", namespaces=tree.nsmap)
+                italic = style_part[0].xpath(".//w:i", namespaces=tree.nsmap)
+                strucktrhough = style_part[0].xpath(".//w:strike", namespaces=tree.nsmap)
+                #underlined = style_part[0].xpath(".//w:u", namespaces=tree.nsmap)
+                #TODO: apparently underlines in html5 are now not done through <u>
+                #https://www.w3schools.com/tags/tag_u.asp
+
+                if bold:
+                    text_part = '<strong>' + text_part + '</strong>'
+                if italic:
+                    text_part = '<em>' + text_part + '</em>'
+                if strucktrhough:
+                    text_part = '<strike>' + text_part + '</strike>'
+                with open(io[2], 'a+', encoding='utf-8') as dev_output:
+                    dev_output.write("\n"+text_part)
+                list_node_value += text_part
+
             if list_node_numid not in all_numbered_lists:
                 all_numbered_lists[list_node_numid] = docx_list(list_node_numid)
             all_numbered_lists[list_node_numid].nodes.append(list_node(list_node_ilvl, list_node_value))

@@ -113,15 +113,14 @@ def process_document():
         li_node = tree.xpath('//w:numPr/w:ilvl [@w:val]', namespaces=tree.nsmap)
         if li_node:
             hyper_link_section = tree.xpath("//w:hyperlink[@r:id]",namespaces = tree.nsmap)
-            #['{'+tree.nsmap['w']+'}id']
             [print(current_link_section.attrib['{'+tree.nsmap['r']+'}id']) for current_link_section in hyper_link_section]
+            #TODO: reappropriate logic below to work after link detection because link tag is first in the XML order.
             list_node_ilvl = int(li_node[0].attrib['{' + tree.nsmap['w'] + '}val'])
             if list_node_ilvl > max_nested_level:
                 max_nested_level = list_node_ilvl
             list_node_numid = (tree.xpath('//w:numPr/w:numId[@w:val]', namespaces=tree.nsmap))[0].attrib[
                 '{' + tree.nsmap['w'] + '}val']
 
-            #list_node_value = "".join([value.text for value in tree.xpath('//w:r/w:t', namespaces=tree.nsmap)])
             list_node_value = ''
             style_parts = tree.xpath('//w:r', namespaces=tree.nsmap)
             for part in style_parts:
@@ -131,8 +130,7 @@ def process_document():
                 italic = style_part[0].xpath(".//w:i", namespaces=tree.nsmap)
                 strucktrhough = style_part[0].xpath(".//w:strike", namespaces=tree.nsmap)
                 #underlined = style_part[0].xpath(".//w:u", namespaces=tree.nsmap)
-                #TODO: apparently underlines in html5 are now not done through <u>
-                #https://www.w3schools.com/tags/tag_u.asp
+                #Deferred.
 
                 if bold:
                     text_part = '<strong>' + text_part + '</strong>'

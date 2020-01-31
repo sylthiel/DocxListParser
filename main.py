@@ -100,7 +100,7 @@ def process_document():
     hyperlinks = {}
     for rel in rels:
         if rels[rel].reltype == RT.HYPERLINK:
-            print("\n Origianl link id -", rel, "with detected URL: ", rels[rel]._target)
+            #print("\n Origianl link id -", rel, "with detected URL: ", rels[rel]._target)
             hyperlinks[rel] = rels[rel]._target
     document.save(io[0])
     document_xml = [para._p.xml for para in document.paragraphs]
@@ -111,37 +111,40 @@ def process_document():
     for paragraph in document_xml:
         tree = etree.fromstring(paragraph)
         li_node = tree.xpath('//w:numPr/w:ilvl [@w:val]', namespaces=tree.nsmap)
+        hyper_link_section = tree.xpath("//w:hyperlink[@r:id]", namespaces=tree.nsmap)
+        #print(hyper_link_section)
         if li_node:
-            hyper_link_section = tree.xpath("//w:hyperlink[@r:id]",namespaces = tree.nsmap)
-            [print(current_link_section.attrib['{'+tree.nsmap['r']+'}id']) for current_link_section in hyper_link_section]
-            #TODO: reappropriate logic below to work after link detection because link tag is first in the XML order.
             list_node_ilvl = int(li_node[0].attrib['{' + tree.nsmap['w'] + '}val'])
             if list_node_ilvl > max_nested_level:
                 max_nested_level = list_node_ilvl
-            list_node_numid = (tree.xpath('//w:numPr/w:numId[@w:val]', namespaces=tree.nsmap))[0].attrib[
-                '{' + tree.nsmap['w'] + '}val']
-
+            list_node_numid = (tree.xpath('//w:numPr/w:numId[@w:val]', namespaces=tree.nsmap))[0].attrib['{' + tree.nsmap['w'] + '}val']
             list_node_value = ''
-            style_parts = tree.xpath('//w:r', namespaces=tree.nsmap)
-            for part in style_parts:
-                text_part = "".join([val.text for val in part.xpath('.//w:t', namespaces=tree.nsmap)])
-                style_part = part.xpath(".//w:rPr", namespaces=tree.nsmap)
-                bold = style_part[0].xpath(".//w:b", namespaces=tree.nsmap)
-                italic = style_part[0].xpath(".//w:i", namespaces=tree.nsmap)
-                strucktrhough = style_part[0].xpath(".//w:strike", namespaces=tree.nsmap)
-                #underlined = style_part[0].xpath(".//w:u", namespaces=tree.nsmap)
-                #Deferred.
+            if hyper_link_section:
+                for hyperlink in hyper_link_section:
+                    rid_value = hyperlink.attrib['{' + tree.nsmap['r'] + '}id']
+                    #[print(x.text) for x in hyperlink.xpath(".//w:t", namespaces=tree.nsmap)]
+                    text_value = "".join([text_part.text for text_part in hyperlink.xpath(".//w:t", namespaces=tree.nsmap)])
+                    list_node_value += f'<a href="{hyperlinks[rid_value]}" target=" blank">{text_value}</a>'
+                    #print(x.attrib for x in hyperlink.xpath("//w:t", namespaces=tree.nsmap))
+                    print(list_node_value + '\n')
+            else:
+                style_parts = tree.xpath('//w:r', namespaces=tree.nsmap)
+                for part in style_parts:
+                    text_part = "".join([val.text for val in part.xpath('.//w:t', namespaces=tree.nsmap)])
+                    style_part = part.xpath(".//w:rPr", namespaces=tree.nsmap)
+                    bold = style_part[0].xpath(".//w:b", namespaces=tree.nsmap)
+                    italic = style_part[0].xpath(".//w:i", namespaces=tree.nsmap)
+                    strucktrhough = style_part[0].xpath(".//w:strike", namespaces=tree.nsmap)
 
-                if bold:
-                    text_part = '<strong>' + text_part + '</strong>'
-                if italic:
-                    text_part = '<em>' + text_part + '</em>'
-                if strucktrhough:
-                    text_part = '<strike>' + text_part + '</strike>'
-                with open(io[2], 'a+', encoding='utf-8') as dev_output:
-                    dev_output.write("\n"+text_part)
-                list_node_value += text_part
-
+                    if bold:
+                        text_part = '<strong>' + text_part + '</strong>'
+                    if italic:
+                        text_part = '<em>' + text_part + '</em>'
+                    if strucktrhough:
+                        text_part = '<strike>' + text_part + '</strike>'
+                    #with open(io[2], 'a+', encoding='utf-8') as dev_output:
+                    #    dev_output.write("\n" + text_part)
+                    list_node_value += text_part
             if list_node_numid not in all_numbered_lists:
                 all_numbered_lists[list_node_numid] = docx_list(list_node_numid)
             all_numbered_lists[list_node_numid].nodes.append(list_node(list_node_ilvl, list_node_value))
